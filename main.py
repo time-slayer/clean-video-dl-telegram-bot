@@ -40,7 +40,7 @@ async def handle_tiktok_link(message) -> None:
             await bot.send_chat_action(message.chat.id, 'upload_video')
             await bot.send_video(message.chat.id, media["url"], reply_to_message_id=message.message_id)
         elif media["type"] == "images":
-            send_photo_gallery(message.chat.id, media["urls"], message.message_id)
+            await send_photo_gallery(message.chat.id, media["urls"], message.message_id)
     except Exception as e:
         await bot.reply_to(message, f"❌ Unexpected error:\n{e}")
 
