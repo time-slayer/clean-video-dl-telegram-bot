@@ -1,6 +1,6 @@
 import asyncio
 from dotenv import load_dotenv
-import telebot
+from telebot.types import InputMediaPhoto, InlineQueryResultVideo
 from telebot.async_telebot import AsyncTeleBot
 import requests
 import os
@@ -49,7 +49,7 @@ async def send_photo_gallery(chat_id: int, photos: str, reply_to: int) -> None:
     CHUNK_SIZE = 10
     for i in range(0, len(photos), CHUNK_SIZE):
         chunk = photos[i:i + CHUNK_SIZE]
-        media_group = [telebot.types.InputMediaPhoto(url) for url in chunk]
+        media_group = [InputMediaPhoto(url) for url in chunk]
         await bot.send_chat_action(chat_id, 'upload_photo', 10)
         await bot.send_media_group(chat_id, media_group, reply_to_message_id=reply_to)
 
@@ -57,6 +57,23 @@ async def send_photo_gallery(chat_id: int, photos: str, reply_to: int) -> None:
 @bot.message_handler(func=lambda message: True)
 async def handle_other(message):
     await bot.reply_to(message, "This is not a valid TikTok video link")
+
+
+@bot.inline_handler(func=lambda query: True)
+async def query_video(query):
+    try:
+        media = get_tiktok_media(query.query)
+
+        r = InlineQueryResultVideo(
+            id=1,
+            video_url=media['url'],
+            thumbnail_url=media['cover'],
+            mime_type="video/mp4",
+            title=media['title']
+        )
+        await bot.answer_inline_query(query.id, [r])
+    except Exception as e:
+        pass
 
 
 def get_tiktok_media(tiktok_url: str) -> dict:
@@ -71,7 +88,7 @@ def get_tiktok_media(tiktok_url: str) -> dict:
     media = data["data"]
     if media.get('images'):
         return {"type": "images", "urls": media["images"]}
-    return {"type": "video", "url": media["play"]}
+    return {"type": "video", "url": media["play"], "cover": media["cover"], 'title': media["title"]}
 
 
 if __name__ == '__main__':
