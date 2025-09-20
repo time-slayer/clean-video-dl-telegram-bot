@@ -5,6 +5,7 @@ from yt_dlp import YoutubeDL
 from dotenv import load_dotenv
 from telegram import Update, InlineQueryResultVideo, MessageEntity
 from telegram.ext import filters, MessageHandler, ApplicationBuilder, CommandHandler, ContextTypes, InlineQueryHandler
+from telegram.constants import ChatAction
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
@@ -53,6 +54,7 @@ async def inline_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def send_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.chat.send_chat_action(ChatAction.UPLOAD_VIDEO)
     video_info = extract_video_info(update.message.text)
     await update.message.reply_video(video_info.get('url'), reply_to_message_id=update.message.message_id)
 
@@ -87,7 +89,7 @@ def main() -> None:
     application.add_handler(
         MessageHandler(filters.TEXT & (filters.Entity(MessageEntity.URL) | filters.Entity(MessageEntity.TEXT_LINK)),
                        send_video)
-        )
+    )
 
     application.add_handler(InlineQueryHandler(inline_video))
 
