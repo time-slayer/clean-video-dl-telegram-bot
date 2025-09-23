@@ -1,95 +1,130 @@
-import asyncio
-from dotenv import load_dotenv
-from telebot.types import InputMediaPhoto, InlineQueryResultVideo
-from telebot.async_telebot import AsyncTeleBot
-import requests
 import os
+import logging
+from typing import Dict
+from uuid import uuid4
 
-load_dotenv()
-API_TOKEN = os.getenv("BOT_TOKEN")
-bot = AsyncTeleBot(API_TOKEN)
+from yt_dlp import YoutubeDL
+from dotenv import load_dotenv
+from telegram import Update, InlineQueryResultVideo, MessageEntity
+from telegram.ext import filters, MessageHandler, ApplicationBuilder, CommandHandler, ContextTypes, InlineQueryHandler
+from telegram.constants import ChatAction
+
+DOWNLOADS_DIR = 'downloads'
+
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
+)
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
-@bot.message_handler(commands=['start'])
-async def handle_start(message):
-    start_message = (
-        f"👋 Welcome, <b>{message.from_user.first_name}</b>\n"
-        "Send me a TikTok link and I’ll return the media\n\n"
-        "🔗 Just paste a TikTok URL here and I’ll do the rest"
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    start_message = f"👋 Welcome, {user.mention_html()}\n" \
+                    "📨 Send me a TikTok link and I’ll return the media\n" \
+                    "🔗 Just paste a TikTok URL here and I’ll do the rest"
+    await update.message.reply_html(start_message)
+
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    help_message = "📌 <b>How to use this bot:</b>\n\n" \
+                   "➊ Copy a link to any TikTok video or photo post\n" \
+                   "➋ Send it here\n" \
+                   "➌ Get the video or photo gallery with no watermark"
+    await update.message.reply_html(help_message)
+
+
+async def unknown(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text='Sorry, I didn\'t understand that command.',
     )
-    await bot.send_message(message.chat.id, start_message, parse_mode="HTML")
 
 
-@bot.message_handler(commands=['help'])
-async def handle_help(message):
-    help_message = (
-        "📌 <b>How to use this bot:</b>\n\n"
-        "➊ Copy a link to any TikTok video or photo post\n"
-        "➋ Send it here\n"
-        "➌ Get the video or photo gallery with no watermark"
+async def inline_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.inline_query.query
+    if not query:
+        return
+
+    video_info = extract_video_info(query)
+    result = InlineQueryResultVideo(
+        id='1',
+        video_url=video_info.get('url'),
+        mime_type='video/mp4',
+        thumbnail_url=video_info.get('thumbnail'),
+        title=video_info.get('title'),
     )
-    await bot.send_message(message.chat.id, help_message, parse_mode="HTML")
+    await update.inline_query.answer([result])
 
 
-@bot.message_handler(func=lambda msg: "https://" in msg.text and "tiktok.com/" in msg.text)
-async def handle_tiktok_link(message) -> None:
+async def send_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_chat_action(ChatAction.UPLOAD_VIDEO)
+    video_bytes = download_video(update.message.text)
+    if not video_bytes:
+        await update.message.reply_text('Failed to download / Not supported :(', reply_to_message_id=update.message.message_id)
+        return
+    await update.message.reply_video(video_bytes, reply_to_message_id=update.message.message_id)
+
+
+def download_video(url: str) -> bytes | None:
     try:
-        media = get_tiktok_media(message.text.strip())
+        unique_id = uuid4()
+        ydl_opts = {
+            'format': 'bv[ext=mp4][height<=1080]+ba/b',
+            'outtmpl': os.path.join(DOWNLOADS_DIR, f'{unique_id}.%(ext)s'),
+            'quiet': True,
+            'no_warnings': True,
+        }
+        with YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            video_ext = info.get('ext')
 
-        if media["type"] == "video":
-            await bot.send_chat_action(message.chat.id, 'upload_video')
-            await bot.send_video(message.chat.id, media["url"], reply_to_message_id=message.message_id)
-        elif media["type"] == "images":
-            await send_photo_gallery(message.chat.id, media["urls"], message.message_id)
+        video_path = os.path.join(DOWNLOADS_DIR, f'{unique_id}.{video_ext}')
+        with open(video_path, 'rb') as f:
+            video_bytes = f.read()
+        os.remove(video_path)
+        return video_bytes
+
     except Exception as e:
-        await bot.reply_to(message, f"❌ Unexpected error:\n{e}")
+        logging.error(e)
+        return None
 
 
-async def send_photo_gallery(chat_id: int, photos: str, reply_to: int) -> None:
-    CHUNK_SIZE = 10
-    for i in range(0, len(photos), CHUNK_SIZE):
-        chunk = photos[i:i + CHUNK_SIZE]
-        media_group = [InputMediaPhoto(url) for url in chunk]
-        await bot.send_chat_action(chat_id, 'upload_photo', 10)
-        await bot.send_media_group(chat_id, media_group, reply_to_message_id=reply_to)
-
-
-@bot.message_handler(func=lambda message: True)
-async def handle_other(message):
-    await bot.reply_to(message, "This is not a valid TikTok video link")
-
-
-@bot.inline_handler(func=lambda query: True)
-async def query_video(query):
+def extract_video_info(url: str) -> Dict[str, str] | None:
+    ydl_opts = {
+        'quiet': True,
+        'no_warnings': True,
+    }
     try:
-        media = get_tiktok_media(query.query)
-
-        r = InlineQueryResultVideo(
-            id=1,
-            video_url=media['url'],
-            thumbnail_url=media['cover'],
-            mime_type="video/mp4",
-            title=media['title']
-        )
-        await bot.answer_inline_query(query.id, [r])
+        with YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            return {
+                'title': info.get('title'),
+                'url': info.get('url'),
+                'thumbnail': info.get('thumbnail'),
+            }
     except Exception as e:
-        pass
+        logging.error(e)
+        return None
 
 
-def get_tiktok_media(tiktok_url: str) -> dict:
-    api_url = "https://tikwm.com/api/"
-    params = {"url": tiktok_url}
-    response = requests.get(api_url, params=params)
+def main() -> None:
+    load_dotenv()
+    bot_token = os.getenv("BOT_TOKEN")
+    application = ApplicationBuilder().token(bot_token).build()
 
-    data = response.json()
-    if data.get("code") != 0:
-        raise Exception("API error: " + data.get("msg", "Unknown"))
+    application.add_handler(CommandHandler('start', start))
+    application.add_handler(CommandHandler('help', help_command))
+    application.add_handler(MessageHandler(filters.COMMAND, unknown))
 
-    media = data["data"]
-    if media.get('images'):
-        return {"type": "images", "urls": media["images"]}
-    return {"type": "video", "url": media["play"], "cover": media["cover"], 'title': media["title"]}
+    application.add_handler(
+        MessageHandler(filters.TEXT & (filters.Entity(MessageEntity.URL) | filters.Entity(MessageEntity.TEXT_LINK)),
+                       send_video)
+    )
+
+    application.add_handler(InlineQueryHandler(inline_video))
+
+    application.run_polling()
 
 
 if __name__ == '__main__':
-    asyncio.run(bot.polling())
+    main()
