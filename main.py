@@ -20,8 +20,8 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     start_message = f"👋 Welcome, {user.mention_html()}\n" \
-                    "📨 Send me a TikTok link and I’ll return the media\n" \
-                    "🔗 Just paste a TikTok URL here and I’ll do the rest"
+                    "📨 Send me a TikTok link and I'll return the media\n" \
+                    "🔗 Just paste a TikTok URL here and I'll do the rest"
     await update.message.reply_html(start_message)
 
 
