@@ -1,5 +1,8 @@
 FROM python:3.14-slim
 
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+
 # Set working directory
 WORKDIR /app
 
@@ -17,9 +20,6 @@ COPY main.py .
 
 # Create downloads directory
 RUN mkdir -p downloads
-
-# Set environment variables
-ENV PYTHONUNBUFFERED=1
 
 # Run the bot
 CMD ["python", "main.py"]
