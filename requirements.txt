@@ -1,3 +1,3 @@
-python-telegram-bot
-dotenv
-yt-dlp
+python-telegram-bot>=22.8
+python-dotenv>=1.2.2
+yt-dlp>=2026.6.9
