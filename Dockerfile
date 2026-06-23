@@ -15,11 +15,11 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the bot code
-COPY main.py .
+# Copy the bot code directory
+COPY src/ ./src/
 
 # Create downloads directory
 RUN mkdir -p downloads
 
 # Run the bot
-CMD ["python", "main.py"]
+CMD ["python", "-m", "src.main"]

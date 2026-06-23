@@ -4,7 +4,6 @@ from typing import Dict
 from uuid import uuid4
 
 from yt_dlp import YoutubeDL
-from dotenv import load_dotenv
 from telegram import Update, InlineQueryResultVideo, MessageEntity
 from telegram.ext import filters, MessageHandler, ApplicationBuilder, CommandHandler, ContextTypes, InlineQueryHandler
 from telegram.constants import ChatAction
@@ -46,8 +45,10 @@ async def inline_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     video_info = extract_video_info(query)
+    if not video_info:
+        return
     result = InlineQueryResultVideo(
-        id='1',
+        id=str(uuid4()),
         video_url=video_info.get('url'),
         mime_type='video/mp4',
         thumbnail_url=video_info.get('thumbnail'),
@@ -66,6 +67,7 @@ async def send_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def download_video(url: str) -> bytes | None:
+    os.makedirs(DOWNLOADS_DIR, exist_ok=True)
     try:
         unique_id = uuid4()
         ydl_opts = {
@@ -85,7 +87,7 @@ def download_video(url: str) -> bytes | None:
         return video_bytes
 
     except Exception as e:
-        logging.error(e)
+        logging.error(f"Download failed: {e}")
         return None
 
 
@@ -103,28 +105,5 @@ def extract_video_info(url: str) -> Dict[str, str] | None:
                 'thumbnail': info.get('thumbnail'),
             }
     except Exception as e:
-        logging.error(e)
+        logging.error(f"Extraction failed: {e}")
         return None
-
-
-def main() -> None:
-    load_dotenv()
-    bot_token = os.getenv("BOT_TOKEN")
-    application = ApplicationBuilder().token(bot_token).build()
-
-    application.add_handler(CommandHandler('start', start))
-    application.add_handler(CommandHandler('help', help_command))
-    application.add_handler(MessageHandler(filters.COMMAND, unknown))
-
-    application.add_handler(
-        MessageHandler(filters.TEXT & (filters.Entity(MessageEntity.URL) | filters.Entity(MessageEntity.TEXT_LINK)),
-                       send_video)
-    )
-
-    application.add_handler(InlineQueryHandler(inline_video))
-
-    application.run_polling()
-
-
-if __name__ == '__main__':
-    main()
