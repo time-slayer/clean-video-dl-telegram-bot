@@ -1,6 +1,6 @@
-import os
 import logging
-from dotenv import load_dotenv
+
+from telegram import MessageEntity
 from telegram.ext import (
     filters,
     MessageHandler,
@@ -8,7 +8,6 @@ from telegram.ext import (
     CommandHandler,
     InlineQueryHandler,
 )
-from telegram import MessageEntity
 
 from .handlers import start, help_command, unknown, send_video, inline_video
 from .config import BOT_TOKEN
