@@ -17,11 +17,11 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
+    user_first_name = update.effective_user.first_name
     start_message = (
-        f"👋 Welcome, {user.mention_html()}\n"
-        "📨 Send me a TikTok link and I'll return the media\n"
-        "🔗 Just paste a TikTok URL here and I'll do the rest"
+        f"👋 Howdy, {user_first_name}\n"
+        "📨 Send me a TikTok link and I'll fetch the video for you\n"
+        "🔗 Just paste URL here — I'll handle the rest!"
     )
     await update.message.reply_html(start_message)
 
@@ -29,17 +29,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     help_message = (
         "📌 <b>How to use this bot:</b>\n\n"
-        "➊ Copy a link to any TikTok video or photo post\n"
-        "➋ Send it here\n"
-        "➌ Get the video or photo gallery with no watermark"
+        "➊ Copy the link to a video from TikTok or another supported platform\n"
+        "➋ Send me the link\n"
+        "➌ I'll send back video with no watermark"
     )
     await update.message.reply_html(help_message)
 
 
 async def unknown(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text="Sorry, I didn't understand that command.",
+    await update.message.reply_text(
+        "Sorry, I didn't understand that command. Try /help",
     )
 
 
@@ -66,7 +65,7 @@ async def send_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     video_bytes = download_video(update.message.text)
     if not video_bytes:
         await update.message.reply_text(
-            "Failed to download / Not supported :(",
+            "Sorry, I couldn't download that video",
             reply_to_message_id=update.message.message_id,
         )
         return
