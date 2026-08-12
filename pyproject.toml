@@ -1,9 +1,16 @@
 [project]
 name = "clean-video-dl-bot"
-version = "0.1.0"
-requires-python = ">= 3.14"
+version = "0.2.0"
+requires-python = ">=3.13"
 dependencies = [
     "python-telegram-bot>=22.8",
     "python-dotenv>=1.2.2",
     "yt-dlp>=2026.6.9",
 ]
+
+[project.scripts]
+clean-video-dl = "clean_video_dl_bot.bot:main"
+
+[build-system]
+requires = ["uv_build>=0.12.3,<0.13"]
+build-backend = "uv_build"

@@ -2,15 +2,15 @@ import logging
 
 from telegram import MessageEntity
 from telegram.ext import (
-    filters,
-    MessageHandler,
     ApplicationBuilder,
     CommandHandler,
     InlineQueryHandler,
+    MessageHandler,
+    filters,
 )
 
-from .handlers import start, help_command, unknown, send_video, inline_video
 from .config import BOT_TOKEN
+from .handlers import help_command, inline_video, send_video, start, unknown
 
 
 def main() -> None:
@@ -32,5 +32,4 @@ def main() -> None:
     app.add_handler(InlineQueryHandler(inline_video))
 
     # Start Polling
-    logging.info("Starting Telegram bot polling...")
     app.run_polling()
