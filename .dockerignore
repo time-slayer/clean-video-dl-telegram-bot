@@ -1,6 +1,5 @@
 __pycache__
-*.pyc
-*.pyo
+*.py[co]
 .venv
 .idea
 .git
