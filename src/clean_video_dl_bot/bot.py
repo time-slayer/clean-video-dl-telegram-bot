@@ -32,5 +32,4 @@ def main() -> None:
     app.add_handler(InlineQueryHandler(inline_video))
 
     # Start Polling
-    logging.info("Starting Telegram bot polling...")
     app.run_polling()
