@@ -1,11 +1,11 @@
-import os
 import logging
+import os
 from uuid import uuid4
 
-from yt_dlp import YoutubeDL
-from telegram import Update, InlineQueryResultVideo
-from telegram.ext import ContextTypes
+from telegram import InlineQueryResultVideo, Update
 from telegram.constants import ChatAction
+from telegram.ext import ContextTypes
+from yt_dlp import YoutubeDL
 
 DOWNLOADS_DIR = "downloads"
 
