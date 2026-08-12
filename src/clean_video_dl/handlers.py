@@ -1,6 +1,5 @@
 import os
 import logging
-from typing import Dict
 from uuid import uuid4
 
 from yt_dlp import YoutubeDL
@@ -100,7 +99,7 @@ def download_video(url: str) -> bytes | None:
         return None
 
 
-def extract_video_info(url: str) -> Dict[str, str] | None:
+def extract_video_info(url: str) -> dict[str, str] | None:
     ydl_opts = {
         "quiet": True,
         "no_warnings": True,
