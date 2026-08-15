@@ -10,7 +10,12 @@ from telegram.ext import (
 )
 
 from .config import BOT_TOKEN
-from .handlers import help_command, inline_video, send_video, start, unknown
+from .handlers import handle_url, help_command, inline_video, start, unknown
+
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+)
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 def main() -> None:
@@ -26,7 +31,7 @@ def main() -> None:
     link_filter = filters.TEXT & (
         filters.Entity(MessageEntity.URL) | filters.Entity(MessageEntity.TEXT_LINK)
     )
-    app.add_handler(MessageHandler(link_filter, send_video))
+    app.add_handler(MessageHandler(link_filter, handle_url))
 
     # Register Inline Query Handlers
     app.add_handler(InlineQueryHandler(inline_video))

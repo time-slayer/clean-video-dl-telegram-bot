@@ -2,17 +2,18 @@ import logging
 import os
 from uuid import uuid4
 
+import anyio
 from telegram import InlineQueryResultVideo, Update
 from telegram.constants import ChatAction
 from telegram.ext import ContextTypes
 from yt_dlp import YoutubeDL
 
 DOWNLOADS_DIR = "downloads"
+BYTES_PER_MB = 1024 * 1024
+TELEGRAM_MAX_SIZE_MB = 50
+MAX_DOWNLOAD_SIZE_BYTES = TELEGRAM_MAX_SIZE_MB * BYTES_PER_MB
 
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
-)
-logging.getLogger("httpx").setLevel(logging.WARNING)
+logger = logging.getLogger(__name__)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -59,21 +60,37 @@ async def inline_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.inline_query.answer([result])
 
 
-async def send_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_chat_action(ChatAction.UPLOAD_VIDEO)
-    video_bytes = download_video(update.message.text)
-    if not video_bytes:
+    filepath, error_msg = await download_video(update.message.text)
+    if error_msg:
         await update.message.reply_text(
-            "Sorry, I couldn't download that video",
-            reply_to_message_id=update.message.message_id,
+            error_msg, reply_to_message_id=update.message.id
         )
         return
-    await update.message.reply_video(
-        video_bytes, reply_to_message_id=update.message.message_id
-    )
+
+    try:
+        with open(filepath, "rb") as video_file:
+            await update.message.reply_video(
+                video_file, reply_to_message_id=update.message.message_id
+            )
+    finally:
+        if filepath and os.path.exists(filepath):
+            os.remove(filepath)
 
 
-def download_video(url: str) -> bytes | None:
+async def download_video(url: str) -> tuple[str | None, str | None]:
+    """
+    Download a video from a given URL using `yt-dlp`.
+
+    Args:
+        url (str): The URL of the video to download.
+
+    Returns:
+        tuple[str | None, str | None]: A tuple containing the file path and an error message.
+            On success returns (`filepath`, `None`).
+            On failure returns (`None`, `error_message`).
+    """
     os.makedirs(DOWNLOADS_DIR, exist_ok=True)
     unique_id = uuid4()
     ydl_opts = {
@@ -85,18 +102,25 @@ def download_video(url: str) -> bytes | None:
     }
     try:
         with YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            video_ext = info.get("ext")
+            info = ydl.extract_info(url, download=False)
+            if not info:
+                return None, "Could not extract video information."
 
-        video_path = os.path.join(DOWNLOADS_DIR, f"{unique_id}.{video_ext}")
-        with open(video_path, "rb") as f:
-            video_bytes = f.read()
-        os.remove(video_path)
-        return video_bytes
+            file_size = info.get("filesize")
+            if file_size > MAX_DOWNLOAD_SIZE_BYTES:
+                mb_size = file_size / BYTES_PER_MB
+                return (
+                    None,
+                    f"Video is too large ({mb_size:.1f} MB). Current limit is {TELEGRAM_MAX_SIZE_MB} MB.",
+                )
+
+            ydl.download(url)
+            video_path = ydl.prepare_filename(info)
+        return video_path, None
 
     except Exception as e:
-        logging.error(f"Download failed: {e}")
-        return None
+        logger.error(f"Download failed: {e}")
+        return None, "Unexpected error"
 
 
 def extract_video_info(url: str) -> dict[str, str] | None:
@@ -113,5 +137,5 @@ def extract_video_info(url: str) -> dict[str, str] | None:
                 "thumbnail": info.get("thumbnail"),
             }
     except Exception as e:
-        logging.error(f"Extraction failed: {e}")
+        logger.error(f"Extraction failed: {e}")
         return None
