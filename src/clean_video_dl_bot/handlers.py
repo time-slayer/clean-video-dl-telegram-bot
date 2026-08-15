@@ -9,10 +9,7 @@ from yt_dlp import YoutubeDL
 
 DOWNLOADS_DIR = "downloads"
 
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
-)
-logging.getLogger("httpx").setLevel(logging.WARNING)
+logger = logging.getLogger(__name__)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -95,7 +92,7 @@ def download_video(url: str) -> bytes | None:
         return video_bytes
 
     except Exception as e:
-        logging.error(f"Download failed: {e}")
+        logger.error(f"Download failed: {e}")
         return None
 
 
@@ -113,5 +110,5 @@ def extract_video_info(url: str) -> dict[str, str] | None:
                 "thumbnail": info.get("thumbnail"),
             }
     except Exception as e:
-        logging.error(f"Extraction failed: {e}")
+        logger.error(f"Extraction failed: {e}")
         return None

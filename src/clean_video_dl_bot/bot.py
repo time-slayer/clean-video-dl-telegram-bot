@@ -12,6 +12,11 @@ from telegram.ext import (
 from .config import BOT_TOKEN
 from .handlers import help_command, inline_video, send_video, start, unknown
 
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+
 
 def main() -> None:
     # Build Application
