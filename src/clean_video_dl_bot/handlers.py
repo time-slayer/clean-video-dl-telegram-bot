@@ -106,7 +106,7 @@ async def download_video(url: str) -> tuple[str | None, str | None]:
             if not info:
                 return None, "Could not extract video information."
 
-            file_size = info.get("filesize")
+            file_size = info.get("filesize") or info.get("filesize_approx") or 0
             if file_size > MAX_DOWNLOAD_SIZE_BYTES:
                 mb_size = file_size / BYTES_PER_MB
                 return (
