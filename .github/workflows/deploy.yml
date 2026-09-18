@@ -36,14 +36,14 @@ jobs:
     needs: build
     steps:
       - name: Deploy to Remote Server
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
           script: |
             cd /opt/clean-video-dl-bot
             docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
             docker stop clean-video-dl-bot || true
-            docker rm clean-video-dl-bot|| true
+            docker rm clean-video-dl-bot || true
             docker run -d --name clean-video-dl-bot --restart unless-stopped --env-file .env ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest

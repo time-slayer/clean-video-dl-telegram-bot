@@ -2,16 +2,17 @@ import logging
 import os
 from uuid import uuid4
 
-import anyio
 from telegram import InlineQueryResultVideo, Update
 from telegram.constants import ChatAction
 from telegram.ext import ContextTypes
 from yt_dlp import YoutubeDL
 
-DOWNLOADS_DIR = "downloads"
-BYTES_PER_MB = 1024 * 1024
-TELEGRAM_MAX_SIZE_MB = 50
-MAX_DOWNLOAD_SIZE_BYTES = TELEGRAM_MAX_SIZE_MB * BYTES_PER_MB
+from .config import (
+    BYTES_PER_MB,
+    DOWNLOADS_DIR,
+    MAX_DOWNLOAD_SIZE_BYTES,
+    TELEGRAM_MAX_SIZE_MB,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -107,20 +108,24 @@ async def download_video(url: str) -> tuple[str | None, str | None]:
                 return None, "Could not extract video information."
 
             file_size = info.get("filesize") or info.get("filesize_approx") or 0
-            if file_size > MAX_DOWNLOAD_SIZE_BYTES:
-                mb_size = file_size / BYTES_PER_MB
-                return (
-                    None,
-                    f"Video is too large ({mb_size:.1f} MB). Current limit is {TELEGRAM_MAX_SIZE_MB} MB.",
-                )
+            if error_msg := check_size_limit(file_size):
+                return None, error_msg
 
             ydl.download(url)
             video_path = ydl.prepare_filename(info)
+
+            # verify actual file size on disk before uploading
+            if os.path.exists(video_path):
+                actual_size = os.path.getsize(video_path)
+                if error_msg := check_size_limit(actual_size):
+                    os.remove(video_path)
+                    return None, error_msg
+
         return video_path, None
 
     except Exception as e:
         logger.error(f"Download failed: {e}")
-        return None, "Unexpected error"
+        return None, "Couldn't download this video"
 
 
 def extract_video_info(url: str) -> dict[str, str] | None:
@@ -139,3 +144,19 @@ def extract_video_info(url: str) -> dict[str, str] | None:
     except Exception as e:
         logger.error(f"Extraction failed: {e}")
         return None
+
+
+def check_size_limit(size_in_bytes: int) -> str | None:
+    """
+    Check if file size exceeds the Telegram limit.
+
+    Args:
+        size_in_bytes (int): File size in bytes
+
+    Returns:
+        str | None: Error message string if it's too big, None if it's safe.
+    """
+    if size_in_bytes > MAX_DOWNLOAD_SIZE_BYTES:
+        mb_size = size_in_bytes / BYTES_PER_MB
+        return f"Video is too large ({mb_size:.1f} MB). Current limit is {TELEGRAM_MAX_SIZE_MB} MB."
+    return None
