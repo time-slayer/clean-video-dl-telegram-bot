@@ -7,10 +7,12 @@ from telegram.constants import ChatAction
 from telegram.ext import ContextTypes
 from yt_dlp import YoutubeDL
 
-DOWNLOADS_DIR = "downloads"
-BYTES_PER_MB = 1024 * 1024
-TELEGRAM_MAX_SIZE_MB = 50
-MAX_DOWNLOAD_SIZE_BYTES = TELEGRAM_MAX_SIZE_MB * BYTES_PER_MB
+from .config import (
+    BYTES_PER_MB,
+    DOWNLOADS_DIR,
+    MAX_DOWNLOAD_SIZE_BYTES,
+    TELEGRAM_MAX_SIZE_MB,
+)
 
 logger = logging.getLogger(__name__)
 
