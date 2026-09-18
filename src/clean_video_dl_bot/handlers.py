@@ -2,7 +2,6 @@ import logging
 import os
 from uuid import uuid4
 
-import anyio
 from telegram import InlineQueryResultVideo, Update
 from telegram.constants import ChatAction
 from telegram.ext import ContextTypes
