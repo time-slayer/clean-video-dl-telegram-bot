@@ -120,7 +120,7 @@ async def download_video(url: str) -> tuple[str | None, str | None]:
 
     except Exception as e:
         logger.error(f"Download failed: {e}")
-        return None, "Unexpected error"
+        return None, "Couldn't download this video"
 
 
 def extract_video_info(url: str) -> dict[str, str] | None:
