@@ -20,10 +20,9 @@ ENV UV_LINK_MODE=copy
 # Omit development dependencies
 ENV UV_NO_DEV=1
 
-COPY pyproject.toml uv.lock ./
-
-# Install the project's dependencies using the lockfile and settings
-RUN uv sync --locked --no-install-project
+RUN --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --locked --no-install-project
 
 COPY . .
 
