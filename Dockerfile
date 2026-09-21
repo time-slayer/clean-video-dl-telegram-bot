@@ -1,7 +1,8 @@
 FROM astral/uv:python3.14-trixie-slim
 
 # Install system dependencies
-RUN apt update && apt install -y ffmpeg \
+RUN apt-get update \
+    && apt-get install -y ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # Install the project into `/app`
