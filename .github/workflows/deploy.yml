@@ -50,3 +50,4 @@ jobs:
             docker stop clean-video-dl-bot || true
             docker rm clean-video-dl-bot || true
             docker run -d --name clean-video-dl-bot --restart unless-stopped --env-file .env ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            docker image prune -f
