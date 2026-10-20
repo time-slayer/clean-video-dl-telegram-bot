@@ -26,7 +26,6 @@ COPY . .
 
 RUN uv sync --locked
 
-# Place executables in the environment at the front of the path
 ENV PATH="/app/.venv/bin:$PATH"
 
-CMD ["uv", "run", "clean-video-dl"]
+CMD ["clean-video-dl"]
