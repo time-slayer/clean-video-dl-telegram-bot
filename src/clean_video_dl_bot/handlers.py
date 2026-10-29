@@ -95,7 +95,8 @@ async def download_video(url: str) -> tuple[str | None, str | None]:
     os.makedirs(DOWNLOADS_DIR, exist_ok=True)
     unique_id = uuid4()
     ydl_opts = {
-        "format": "bv[ext=mp4][height<=1080]+ba/b",
+        "format": "bv*[height<=1080]+ba/b",
+        "merge_output_format": "mp4",
         "outtmpl": os.path.join(DOWNLOADS_DIR, f"{unique_id}.%(ext)s"),
         "quiet": True,
         "no_warnings": True,
